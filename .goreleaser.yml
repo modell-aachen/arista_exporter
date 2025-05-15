@@ -1,0 +1,33 @@
+project_name: prometheus-arista-exporter
+dist: artifacts
+version: 2
+
+before:
+  hooks:
+  - go mod download
+builds:
+- env:
+  - CGO_ENABLED=0
+  goos:
+  - linux
+  goarch:
+  - amd64
+  ldflags: -s -w -X main.version={{.Version}}
+  binary: arista_exporter
+
+nfpms:
+- homepage: https://github.com/modell-aachen/arista_exporter
+  description: Arista Exporter for Prometheus
+  maintainer: Modell Aachen GmbH
+  license: MIT License
+  contents:
+  - src: .packaging/defaults
+    dst: /etc/default/prometheus-arista-exporter
+  - src: .packaging/prometheus-arista-exporter.service
+    dst: /usr/lib/systemd/system/prometheus-arista-exporter.service
+  formats:
+  - deb
+  dependencies:
+  - systemd
+  scripts:
+    postinstall: .packaging/postinstall.sh

@@ -1,0 +1,13 @@
+[Unit]
+Description=Prometheus exporter for Arista OS
+Documentation=https://github.com/modell-aachen/arista_exporter
+
+[Service]
+Restart=on-failure
+DynamicUser=yes
+User=prometheus
+EnvironmentFile=/etc/default/prometheus-arista-exporter
+ExecStart=/usr/bin/arista_exporter $ARGS
+
+[Install]
+WantedBy=multi-user.target
