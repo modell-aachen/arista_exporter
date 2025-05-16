@@ -40,7 +40,7 @@ type TempSensor struct {
 }
 
 func (c *PowerCollector) GetCmd() string {
-	return "show environment power"
+	return "show system environment power"
 }
 
 var psuOpts = MakeSubsystemOptsFactory("power_supply")

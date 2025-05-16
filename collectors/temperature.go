@@ -40,7 +40,7 @@ type TemperatureSensor struct {
 }
 
 func (c *TemperatureCollector) GetCmd() string {
-	return "show environment temperature"
+	return "show system environment temperature"
 }
 
 var tempOpts = MakeSubsystemOptsFactory("temperature")

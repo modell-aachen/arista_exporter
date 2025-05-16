@@ -16,11 +16,12 @@ type Collector interface {
 
 func getCollectorMap(enabled string) map[string]Collector {
 	allCollectors := map[string]Collector{
-		"version":    &collectors.VersionCollector{},
-		"power":      &collectors.PowerCollector{},
-		"interfaces": &collectors.InterfacesCollector{},
-		// "cooling":     &collectors.CoolingCollector{},
-		// "temperature": &collectors.TemperatureCollector{},
+		"version":     &collectors.VersionCollector{},
+		"power":       &collectors.PowerCollector{},
+		"interfaces":  &collectors.InterfacesCollector{},
+		"cooling":     &collectors.CoolingCollector{},
+		"temperature": &collectors.TemperatureCollector{},
+		// "bgp":         &collectors.BgpCollector{},
 	}
 
 	collectorMap := make(map[string]Collector)

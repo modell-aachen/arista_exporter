@@ -1,8 +1,9 @@
 package collectors
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
 	"strconv"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 type CoolingCollector struct {
@@ -42,7 +43,7 @@ type FanStatus struct {
 }
 
 func (c *CoolingCollector) GetCmd() string {
-	return "show environment cooling"
+	return "show system environment cooling"
 }
 
 var coolingOpts = MakeSubsystemOptsFactory("cooling")
