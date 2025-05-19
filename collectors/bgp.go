@@ -87,9 +87,22 @@ func (c *BgpCollector) Register(registry *prometheus.Registry) {
 func (c *BgpCollector) UpdateMetrics() {
 	for vrfName, vrf := range c.Vrfs {
 		for addr, peer := range vrf.Peers {
-			state := 0.0
-			if peer.PeerState == "Established" {
-				state = 1.0
+			var state float64
+			switch peer.PeerState {
+			case "Idle":
+				state = 1
+			case "Connect":
+				state = 2
+			case "Active":
+				state = 3
+			case "OpenSent":
+				state = 4
+			case "OpenConfirm":
+				state = 5
+			case "Established":
+				state = 6
+			default:
+				state = 0
 			}
 			c.prefixReceivedGauge.WithLabelValues(addr, peer.Description, peer.Asn, vrfName, vrf.RouterID).Set(float64(peer.PrefixReceived))
 			c.prefixAcceptedGauge.WithLabelValues(addr, peer.Description, peer.Asn, vrfName, vrf.RouterID).Set(float64(peer.PrefixAccepted))
