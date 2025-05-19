@@ -21,6 +21,13 @@ jobs:
       with:
         go-version: "1.24"
 
+    - name: Patch aristanetworks/goeapi dependency
+      run: |
+        go mod tidy
+        go mod vendor
+        sed -i 's/\(Version[[:space:]]*\)int/\1string/' ./vendor/github.com/aristanetworks/goeapi/eapi.go
+        sed -i 's/p := Parameters{1, commands, encoding}/p := Parameters{"latest", commands, encoding}/' ./vendor/github.com/aristanetworks/goeapi/eapilib.go
+
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v4
       with:

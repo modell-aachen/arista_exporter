@@ -21,7 +21,7 @@ func getCollectorMap(enabled string) map[string]Collector {
 		"interfaces":  &collectors.InterfacesCollector{},
 		"cooling":     &collectors.CoolingCollector{},
 		"temperature": &collectors.TemperatureCollector{},
-		// "bgp":         &collectors.BgpCollector{},
+		"bgp":         &collectors.BgpCollector{},
 	}
 
 	collectorMap := make(map[string]Collector)

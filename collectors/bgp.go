@@ -1,28 +1,37 @@
 package collectors
 
 import (
-	log "github.com/sirupsen/logrus"
-
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+type BgpVrf struct {
+	RouterID string             `json:"routerId"`
+	Asn      string             `json:"asn"`
+	Peers    map[string]BgpPeer `json:"peers"`
+	Vrf      string             `json:"vrf"`
+}
+
 type BgpPeer struct {
-	Description      string  `json:"description"`
-	MsgSent          int     `json:"msgSent"`
-	MsgReceived      int     `json:"msgReceived"`
-	PrefixReceived   int     `json:"prefixReceived"`
-	PrefixAccepted   int     `json:"prefixAccepted"`
-	PrefixInBest     int     `json:"prefixInBest"`
-	PrefixInBestEcmp int     `json:"prefixInBestEcmp"`
-	InMsgQueue       int     `json:"inMsgQueue"`
-	OutMsgQueue      int     `json:"outMsgQueue"`
-	PeerState        string  `json:"peerState"`
-	UpDownTime       float64 `json:"upDownTime"`
-	Asn              string  `json:"asn"`
+	Description         string        `json:"description"`
+	MsgSent             int           `json:"msgSent"`
+	MsgReceived         int           `json:"msgReceived"`
+	PrefixReceived      int           `json:"prefixReceived"`
+	PrefixAccepted      int           `json:"prefixAccepted"`
+	PrefixInBest        int           `json:"prefixInBest"`
+	PrefixInBestEcmp    int           `json:"prefixInBestEcmp"`
+	InMsgQueue          int           `json:"inMsgQueue"`
+	OutMsgQueue         int           `json:"outMsgQueue"`
+	PeerState           string        `json:"peerState"`
+	UpDownTime          float64       `json:"upDownTime"`
+	Asn                 string        `json:"asn"`
+	UnderMaintenance    bool          `json:"underMaintenance"`
+	Version             int           `json:"version"`
+	LldpNeighbors       []interface{} `json:"lldpNeighbors"`
+	PeerStateIdleReason string        `json:"peerStateIdleReason,omitempty"`
 }
 
 type BgpCollector struct {
-	Peers map[string]BgpPeer `json:"peers"`
+	Vrfs map[string]BgpVrf `json:"vrfs"`
 
 	prefixReceivedGauge   *prometheus.GaugeVec
 	prefixAcceptedGauge   *prometheus.GaugeVec
@@ -31,9 +40,13 @@ type BgpCollector struct {
 	msgSentGauge          *prometheus.GaugeVec
 	msgReceivedGauge      *prometheus.GaugeVec
 	peerStateGauge        *prometheus.GaugeVec
+
+	inMsgQueueGauge       *prometheus.GaugeVec
+	outMsgQueueGauge      *prometheus.GaugeVec
+	underMaintenanceGauge *prometheus.GaugeVec
 }
 
-var ifLabels = []string{"peer", "description", "asn"}
+var ifLabels = []string{"peer", "description", "asn", "vrf", "router_id"}
 var bgpOpts = MakeSubsystemOptsFactory("bgp")
 
 func (c *BgpCollector) GetCmd() string {
@@ -61,21 +74,39 @@ func (c *BgpCollector) Register(registry *prometheus.Registry) {
 
 	c.peerStateGauge = prometheus.NewGaugeVec(bgpOpts("peer_state", "BGP peer state (1 if Established, 0 otherwise)"), ifLabels)
 	registry.MustRegister(c.peerStateGauge)
-}
 
+	c.inMsgQueueGauge = prometheus.NewGaugeVec(bgpOpts("in_msg_queue", "Number of BGP messages in input queue"), ifLabels)
+	registry.MustRegister(c.inMsgQueueGauge)
+
+	c.outMsgQueueGauge = prometheus.NewGaugeVec(bgpOpts("out_msg_queue", "Number of BGP messages in output queue"), ifLabels)
+	registry.MustRegister(c.outMsgQueueGauge)
+
+	c.underMaintenanceGauge = prometheus.NewGaugeVec(bgpOpts("under_maintenance", "Whether the peer is under maintenance (1 if true, 0 if false)"), ifLabels)
+	registry.MustRegister(c.underMaintenanceGauge)
+}
 func (c *BgpCollector) UpdateMetrics() {
-	log.Infof("Updating BGP metrics: %s", c)
-	for addr, peer := range c.Peers {
-		state := 0.0
-		if peer.PeerState == "Established" {
-			state = 1.0
+	for vrfName, vrf := range c.Vrfs {
+		for addr, peer := range vrf.Peers {
+			state := 0.0
+			if peer.PeerState == "Established" {
+				state = 1.0
+			}
+			c.prefixReceivedGauge.WithLabelValues(addr, peer.Description, peer.Asn, vrfName, vrf.RouterID).Set(float64(peer.PrefixReceived))
+			c.prefixAcceptedGauge.WithLabelValues(addr, peer.Description, peer.Asn, vrfName, vrf.RouterID).Set(float64(peer.PrefixAccepted))
+			c.prefixInBestGauge.WithLabelValues(addr, peer.Description, peer.Asn, vrfName, vrf.RouterID).Set(float64(peer.PrefixInBest))
+			c.prefixInBestEcmpGauge.WithLabelValues(addr, peer.Description, peer.Asn, vrfName, vrf.RouterID).Set(float64(peer.PrefixInBestEcmp))
+			c.msgSentGauge.WithLabelValues(addr, peer.Description, peer.Asn, vrfName, vrf.RouterID).Set(float64(peer.MsgSent))
+			c.msgReceivedGauge.WithLabelValues(addr, peer.Description, peer.Asn, vrfName, vrf.RouterID).Set(float64(peer.MsgReceived))
+			c.peerStateGauge.WithLabelValues(addr, peer.Description, peer.Asn, vrfName, vrf.RouterID).Set(state)
+
+			c.inMsgQueueGauge.WithLabelValues(addr, peer.Description, peer.Asn, vrfName, vrf.RouterID).Set(float64(peer.InMsgQueue))
+			c.outMsgQueueGauge.WithLabelValues(addr, peer.Description, peer.Asn, vrfName, vrf.RouterID).Set(float64(peer.OutMsgQueue))
+			maintenance := 0.0
+			if peer.UnderMaintenance {
+				maintenance = 1.0
+			}
+			c.underMaintenanceGauge.WithLabelValues(addr, peer.Description, peer.Asn, vrfName, vrf.RouterID).Set(maintenance)
 		}
-		c.prefixReceivedGauge.WithLabelValues(addr, peer.Description, peer.Asn).Set(float64(peer.PrefixReceived))
-		c.prefixAcceptedGauge.WithLabelValues(addr, peer.Description, peer.Asn).Set(float64(peer.PrefixAccepted))
-		c.prefixInBestGauge.WithLabelValues(addr, peer.Description, peer.Asn).Set(float64(peer.PrefixInBest))
-		c.prefixInBestEcmpGauge.WithLabelValues(addr, peer.Description, peer.Asn).Set(float64(peer.PrefixInBestEcmp))
-		c.msgSentGauge.WithLabelValues(addr, peer.Description, peer.Asn).Set(float64(peer.MsgSent))
-		c.msgReceivedGauge.WithLabelValues(addr, peer.Description, peer.Asn).Set(float64(peer.MsgReceived))
-		c.peerStateGauge.WithLabelValues(addr, peer.Description, peer.Asn).Set(state)
 	}
+
 }
