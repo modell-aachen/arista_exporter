@@ -72,7 +72,7 @@ func (c *BgpCollector) Register(registry *prometheus.Registry) {
 	c.msgReceivedGauge = prometheus.NewGaugeVec(bgpOpts("msg_received", "Number of BGP messages received from peer"), ifLabels)
 	registry.MustRegister(c.msgReceivedGauge)
 
-	c.peerStateGauge = prometheus.NewGaugeVec(bgpOpts("peer_state", "BGP peer state (1 if Established, 0 otherwise)"), ifLabels)
+	c.peerStateGauge = prometheus.NewGaugeVec(bgpOpts("peer_state", "BGP peer state: 1=Idle, 2=Connect, 3=Active, 4=OpenSent, 5=OpenConfirm, 6=Established"), ifLabels)
 	registry.MustRegister(c.peerStateGauge)
 
 	c.inMsgQueueGauge = prometheus.NewGaugeVec(bgpOpts("in_msg_queue", "Number of BGP messages in input queue"), ifLabels)

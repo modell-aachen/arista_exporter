@@ -14,6 +14,8 @@ type PowerCollector struct {
 	psuInputCurrent  *prometheus.GaugeVec
 	psuOutputCurrent *prometheus.GaugeVec
 	psuOutputPower   *prometheus.GaugeVec
+	psuInputVoltage  *prometheus.GaugeVec
+	psuFanStatus     *prometheus.GaugeVec
 }
 
 type PowerSupply struct {
@@ -27,6 +29,7 @@ type PowerSupply struct {
 	Managed       bool                    `json:"managed"`
 	TempSensors   map[string]TempSensor   `json:"tempSensors"`
 	Fans          map[string]PSUFanStatus `json:"fans"`
+	InputVoltage  float64                 `json:"inputVoltage"`
 }
 
 type PSUFanStatus struct {
@@ -62,9 +65,13 @@ func (c *PowerCollector) Register(registry *prometheus.Registry) {
 		defaultLabels)
 	c.psuOutputPower = prometheus.NewGaugeVec(psuOpts("power", "Power consumption in watts"),
 		defaultLabels)
+	c.psuInputVoltage = prometheus.NewGaugeVec(psuOpts("voltage_in", "Input Voltage from wall in volts"), defaultLabels)
+	c.psuFanStatus = prometheus.NewGaugeVec(psuOpts("fan_status", "Fan status: 1 if ok, 0 otherwise"), []string{"psuId", "fan"})
 
 	// Register all metrics
 	registry.MustRegister(c.psuMeta, c.psuUptime, c.psuInputCurrent, c.psuOutputCurrent, c.psuOutputPower)
+	registry.MustRegister(c.psuInputVoltage)
+	registry.MustRegister(c.psuFanStatus)
 }
 
 func (c *PowerCollector) UpdateMetrics() {
@@ -85,6 +92,16 @@ func (c *PowerCollector) UpdateMetrics() {
 		// PSU Power Consumption
 		c.psuInputCurrent.WithLabelValues(id).Set(psu.InputCurrent)
 		c.psuOutputCurrent.WithLabelValues(id).Set(psu.OutputCurrent)
+		c.psuUptime.WithLabelValues(id).Set(psu.Uptime)
 		c.psuOutputPower.WithLabelValues(id).Set(psu.OutputPower)
+		c.psuInputVoltage.WithLabelValues(id).Set(psu.InputVoltage)
+
+		for fanId, fan := range psu.Fans {
+			status := 0.0
+			if fan.Status == "ok" {
+				status = 1.0
+			}
+			c.psuFanStatus.WithLabelValues(id, fanId).Set(status)
+		}
 	}
 }
